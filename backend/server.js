@@ -1,20 +1,26 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const tarefasRouter = require('./routes/tarefas');
-const { initFirebase } = require('./utils/firebase');
+// backend/server.js
+const express = require("express");
+const cors = require("cors");
+const tarefasRouter = require("./routes/tarefas");
+require("dotenv").config();
 
 const app = express();
+
+// CORS CORRETO PARA O FRONTEND EM 5173
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
+
+app.use(express.json());
+
+// ROTAS
+app.use("/api/tarefas", tarefasRouter);
+
 const PORT = process.env.PORT || 4000;
 
-app.use(cors());
-app.use(bodyParser.json());
-
-initFirebase(); // inicializa firebase-admin apenas se GOOGLE_APPLICATION_CREDENTIALS estiver definido
-
-app.use('/api/tarefas', tarefasRouter);
-
-app.get('/', (req, res) => res.send('API Tarefas (MySQL) - funcionando'));
-
-app.listen(PORT, () => console.log(`Server rodando na porta ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Servidor backend rodando na porta ${PORT}`);
+});

@@ -1,46 +1,30 @@
+// backend/utils/firebase.js
 const admin = require('firebase-admin');
+const path = require('path');
+require('dotenv').config();
 
-function initFirebase() {
-  // Se variável GOOGLE_APPLICATION_CREDENTIALS estiver definida, firebase-admin carrega automaticamente
-  const gpath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  if (!gpath) {
-    console.log('GOOGLE_APPLICATION_CREDENTIALS não definido — firebase-admin não será inicializado automaticamente.');
-    return;
-  }
+let credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
-  try {
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.applicationDefault()
-      });
-      console.log('Firebase initialized via GOOGLE_APPLICATION_CREDENTIALS');
-    }
-  } catch (err) {
-    console.error('Erro ao inicializar firebase-admin:', err.message || err);
-  }
+if (!credPath) {
+  console.error('ERRO: Variável GOOGLE_APPLICATION_CREDENTIALS não definida no .env');
+  process.exit(1);
 }
 
-async function verifyTokenMiddleware(req, res, next) {
-  // Se SKIP_AUTH=true, injeta user de teste e passa adiante
-  if (String(process.env.SKIP_AUTH).toLowerCase() === 'true') {
-    req.user = { uid: process.env.TEST_UID || 'TEST_UID_1' };
-    return next();
-  }
+// resolvendo caminho em relação a este arquivo
+const resolvedPath = path.isAbsolute(credPath)
+  ? credPath
+  : path.resolve(__dirname, '..', credPath);
 
-  // Caso contrário exige Authorization: Bearer <idToken>
-  const authHeader = req.headers.authorization || '';
-  const match = authHeader.match(/^Bearer (.*)$/);
-  if (!match) return res.status(401).json({ error: 'Nenhum token informado. Header Authorization: Bearer <idToken>' });
-  const idToken = match[1];
-
-  try {
-    const decoded = await admin.auth().verifyIdToken(idToken);
-    req.user = decoded; // uid, email...
-    next();
-  } catch (err) {
-    console.error('Token inválido', err);
-    res.status(401).json({ error: 'Token inválido' });
-  }
+try {
+  const serviceAccount = require(resolvedPath);
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+  console.log('Firebase Admin inicializado com sucesso!');
+} catch (err) {
+  console.error('Falha ao carregar credenciais Firebase:', err.message);
+  process.exit(1);
 }
 
-module.exports = { initFirebase, verifyTokenMiddleware };
+module.exports = admin;
+
