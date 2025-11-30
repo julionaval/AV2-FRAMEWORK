@@ -1,4 +1,3 @@
-// backend/utils/firebase.js
 const admin = require('firebase-admin');
 const path = require('path');
 require('dotenv').config();
@@ -10,7 +9,6 @@ if (!credPath) {
   process.exit(1);
 }
 
-// resolvendo caminho em relação a este arquivo
 const resolvedPath = path.isAbsolute(credPath)
   ? credPath
   : path.resolve(__dirname, '..', credPath);
@@ -27,4 +25,3 @@ try {
 }
 
 module.exports = admin;
-

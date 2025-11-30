@@ -1,6 +1,9 @@
-import axios from "axios";
+import axios from 'axios';
 
-export default axios.create({
-  baseURL: "/api", // Vite proxy envia para localhost:4000
-  withCredentials: true,
+const api = axios.create({
+  baseURL: '/api',
+  withCredentials: true
 });
+
+export default api;
+
