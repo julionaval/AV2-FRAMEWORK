@@ -1,9 +1,10 @@
+// frontend/src/services/api.js
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: '/api',
-  withCredentials: true
+export const apiClient = axios.create({
+  baseURL: '/api', // Vite proxy encaminha para backend
+  withCredentials: true,
 });
 
-export default api;
-
+// também exporta como default para compatibilidade
+export default apiClient;

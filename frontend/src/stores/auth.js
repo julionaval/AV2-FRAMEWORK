@@ -1,35 +1,53 @@
-import { defineStore } from 'pinia';
-import { getAuth, signOut } from 'firebase/auth';
+// frontend/src/stores/auth.js
+import { defineStore } from 'pinia'
+import api from '@/services/api'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
-    idToken: null
+    loading: false,
+    error: null,
   }),
 
-  actions: {
-    async setUser(firebaseUser) {
-      if (firebaseUser) {
-        this.user = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName,
-          photoURL: firebaseUser.photoURL
-        };
+  getters: {
+    isAuthenticated: (state) => !!state.user,
+  },
 
-        // guarda idToken para API
-        this.idToken = await firebaseUser.getIdToken();
-      } else {
-        this.user = null;
-        this.idToken = null;
+  actions: {
+    async fetchMe() {
+      this.loading = true
+      try {
+        const res = await api.get('/auth/me')
+        this.user = res.data
+        this.error = null
+      } catch (err) {
+        this.user = null
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async login(idToken) {
+      this.loading = true
+      try {
+        const res = await api.post('/auth/login', { idToken })
+        this.user = res.data.user
+        this.error = null
+        return res.data.user
+      } catch (err) {
+        this.error = err?.response?.data || 'Erro no login'
+        throw err
+      } finally {
+        this.loading = false
       }
     },
 
     async logout() {
-      const auth = getAuth();
-      await signOut(auth);
-      this.user = null;
-      this.idToken = null;
+      try {
+        await api.post('/auth/logout')
+      } finally {
+        this.user = null
+      }
     }
   }
-});
+})

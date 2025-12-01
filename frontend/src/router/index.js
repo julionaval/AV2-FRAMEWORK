@@ -1,52 +1,51 @@
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { createRouter, createWebHistory } from 'vue-router';
-import { useAuthStore } from '../stores/auth';
-import Dashboard from '../views/Dashboard.vue';
-import Login from '../views/Login.vue';
-import TarefaForm from '../views/TarefaForm.vue';
-import TarefasList from '../views/TarefasList.vue';
+// frontend/src/router/index.js
+import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+
+import Dashboard from '../views/Dashboard.vue'
+import Login from '../views/Login.vue'
+import TarefaForm from '../views/TarefaForm.vue'
+import TarefasList from '../views/TarefasList.vue'
 
 const routes = [
-  { path: '/login', name: 'Login', component: Login },
-  { path: '/', name: 'Dashboard', component: Dashboard, meta: { requiresAuth: true } },
+  { path: '/', redirect: '/login' },
+  { path: '/login', name: 'Login', component: Login, meta: { requiresAuth: false } },
+  { path: '/dashboard', name: 'Dashboard', component: Dashboard, meta: { requiresAuth: true } },
   { path: '/tarefas', name: 'Tarefas', component: TarefasList, meta: { requiresAuth: true } },
   { path: '/tarefas/nova', name: 'TarefaNova', component: TarefaForm, meta: { requiresAuth: true } },
-  { path: '/tarefas/:id', name: 'TarefaEdit', component: TarefaForm, meta: { requiresAuth: true } },
-
-  // ⭐ ROTA DO TOKEN (correta)
-  { path: '/token', name: 'TokenPage', component: () => import('../views/ShowToken.vue') }
-];
-
+  { path: '/tarefas/:id', name: 'TarefaEdit', component: TarefaForm, meta: { requiresAuth: true }, props: true },
+  { path: '/:pathMatch(.*)*', redirect: '/login' }, // fallback
+]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
-});
+  routes,
+})
 
-// Proteção de rotas
-let firstCheck = false;
+// Global guard: usa apenas o authStore (que consulta o backend /api/auth/me)
+router.beforeEach(async (to) => {
+  const auth = useAuthStore()
 
-router.beforeEach(async (to, from, next) => {
-  const authStore = useAuthStore();
-  const requiresAuth = to.meta.requiresAuth;
-  const auth = getAuth();
-
-  // aguarda firebase verificar usuário na primeira carga
-  if (!firstCheck) {
-    await new Promise((resolve) => {
-      const unsub = onAuthStateChanged(auth, async (user) => {
-        await authStore.setUser(user);
-        unsub();
-        resolve();
-      });
-    });
-    firstCheck = true;
+  // Se ainda não carregamos o usuário, tente buscar do backend (uma vez)
+  if (!auth.user && !auth.loading) {
+    try {
+      await auth.fetchMe()
+    } catch {
+      // ignorar erro — auth.user ficará null
+    }
   }
 
-  if (requiresAuth && !authStore.user) return next('/login');
-  if (to.name === 'Login' && authStore.user) return next('/');
+  // Se a rota exige auth e não tiver usuário, redireciona para login
+  if (to.meta?.requiresAuth && !auth.isAuthenticated) {
+    return { name: 'Login' }
+  }
 
-  next();
-});
+  // Se estiver logado e tentando acessar login, manda para dashboard
+  if (to.name === 'Login' && auth.isAuthenticated) {
+    return { name: 'Dashboard' }
+  }
 
-export default router;
+  return true
+})
+
+export default router
